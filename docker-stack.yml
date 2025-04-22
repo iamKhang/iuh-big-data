@@ -1,0 +1,221 @@
+version: '3.8'
+
+services:
+  rng:
+    build: ./rng
+    image: ${REGISTRY-127.0.0.1:5000}/dockercoins_rng:${TAG-latest}
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "com.dockercoins.service=rng"
+    networks:
+      - hoangkhang-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  hasher:
+    build: ./hasher
+    image: ${REGISTRY-127.0.0.1:5000}/dockercoins_hasher:${TAG-latest}
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "com.dockercoins.service=hasher"
+    networks:
+      - hoangkhang-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  webui:
+    build: ./webui
+    image: ${REGISTRY-127.0.0.1:5000}/dockercoins_webui:${TAG-latest}
+    volumes:
+      - webui_files:/files/
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "com.dockercoins.service=webui"
+    networks:
+      - hoangkhang-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+    networks:
+      - hoangkhang-net
+
+  worker:
+    build: ./worker
+    image: ${REGISTRY-127.0.0.1:5000}/dockercoins_worker:${TAG-latest}
+    deploy:
+      replicas: 5
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "com.dockercoins.service=worker"
+    networks:
+      - hoangkhang-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - prometheus_data:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - hoangkhang-net
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+
+  grafana:
+    image: grafana/grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - hoangkhang-net
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+
+  influxdb:
+    image: influxdb:2.7
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    networks:
+      - hoangkhang-net
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=adminpassword
+      - DOCKER_INFLUXDB_INIT_ORG=dockercoins
+      - DOCKER_INFLUXDB_INIT_BUCKET=metrics
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=mytoken
+
+  node-exporter:
+    image: prom/node-exporter
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - hoangkhang-net
+    deploy:
+      mode: global
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - hoangkhang-net
+    deploy:
+      mode: global
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - hoangkhang-net
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.13.4
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    networks:
+      - hoangkhang-net
+    ports:
+      - "5000:5000"
+      - "5044:5044"
+    deploy:
+      replicas: 2
+      placement:
+        constraints: [node.role == manager]
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    environment:
+      - xpack.security.enabled=false
+      - elasticsearch.hosts=http://elasticsearch:9200
+      - elasticsearch.ssl.verificationMode=none
+    networks:
+      - hoangkhang-net
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+    ports:
+      - "80:80"
+    networks:
+      - hoangkhang-net
+    deploy:
+      replicas: 2
+      placement:
+        constraints: [node.role == manager]
+
+networks:
+  hoangkhang-net:
+    external: true
+    name: hoangkhang-net
+
+volumes:
+  webui_files:
+  prometheus_data:
+  grafana_data:
+  influxdb_data:
+  es_data:
