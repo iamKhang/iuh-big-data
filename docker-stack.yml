@@ -322,8 +322,7 @@ services:
   logstash:
     image: docker.elastic.co/logstash/logstash:7.17.10
     volumes:
-      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
-      - /var/log/docker:/var/log/docker:ro
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
     networks:
       - hoangkhang-net
     # Sử dụng port khác để tránh xung đột
@@ -335,31 +334,19 @@ services:
         published: 5045
         mode: host
     environment:
-      - "LS_JAVA_OPTS=-Xmx512m -Xms512m"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9600"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+      - "LS_JAVA_OPTS=-Xmx256m -Xms256m"
     deploy:
-      # Cấu hình 2 replicas theo yêu cầu
-      replicas: 2
-      update_config:
-        parallelism: 1
-        delay: 30s
-        order: start-first
+      # Giảm xuống 1 replica để tránh lỗi
+      replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
         max_attempts: 3
-        window: 120s
       resources:
         limits:
-          memory: 1G
-          cpus: '0.5'
-        reservations:
           memory: 512M
-          cpus: '0.2'
+        reservations:
+          memory: 256M
       placement:
         constraints: [node.role == manager]
 
