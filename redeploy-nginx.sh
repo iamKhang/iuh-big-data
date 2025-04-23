@@ -38,8 +38,8 @@ echo "Kiểm tra logs của Nginx..."
 sleep 5
 docker service logs dockercoins_nginx --tail 10
 
-# Lấy địa chỉ IP của máy
-IP_ADDR=$(hostname -I | awk '{print $1}')
+# Sử dụng địa chỉ IP cố định của node manager
+IP_ADDR="192.168.19.10"
 
 echo "===== Hoàn tất! ====="
 echo "Bạn có thể truy cập Nginx qua: http://$IP_ADDR:8090/"

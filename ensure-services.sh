@@ -75,10 +75,10 @@ docker stack services dockercoins
 
 # Kiểm tra kết nối đến Nginx
 echo -e "\nKiểm tra kết nối đến Nginx..."
-curl -s -o /dev/null -w "%{http_code}" http://localhost:8090/ || echo "Không thể kết nối đến Nginx"
+curl -s -o /dev/null -w "%{http_code}" http://192.168.19.10:8090/ || echo "Không thể kết nối đến Nginx"
 
-# Lấy địa chỉ IP của máy
-IP_ADDR=$(hostname -I | awk '{print $1}')
+# Sử dụng địa chỉ IP cố định của node manager
+IP_ADDR="192.168.19.10"
 
 echo -e "\n===== HOÀN TẤT ====="
 echo "Bạn có thể truy cập các dịch vụ qua các URL sau:"

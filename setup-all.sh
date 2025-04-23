@@ -82,8 +82,8 @@ sleep 30
 echo "===== Đảm bảo tất cả các dịch vụ đang chạy ====="
 ./ensure-services.sh
 
-# Lấy địa chỉ IP của máy
-IP_ADDR=$(hostname -I | awk '{print $1}')
+# Sử dụng địa chỉ IP cố định của node manager
+IP_ADDR="192.168.19.10"
 
 echo "===== THIẾT LẬP HOÀN TẤT ====="
 echo "Bạn có thể truy cập các dịch vụ qua các URL sau:"
