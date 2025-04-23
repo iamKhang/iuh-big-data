@@ -103,123 +103,212 @@ Nginx sử dụng cấu hình resolver đặc biệt để đảm bảo phân gi
 
 ### Setup and Deployment | Cài đặt và triển khai
 
-#### Cách 1: Sử dụng script thiết lập tất cả (Khuyến nghị)
+#### Cách 1: Triển khai nhanh toàn bộ hệ thống
+
+Để triển khai nhanh toàn bộ hệ thống, hãy thực hiện các bước sau trên node manager:
 
 ```bash
-# Cấp quyền thực thi cho script thiết lập tất cả
-chmod +x setup-all.sh
+# 1. Cấp quyền thực thi cho tất cả các script
+chmod +x *.sh
 
-# Chạy script để thiết lập toàn bộ hệ thống
-./setup-all.sh
+# 2. Dọn dẹp Docker (nếu cần)
+./clean-docker.sh
+
+# 3. Thiết lập Docker Registry
+sudo ./setup-registry.sh
+./start-registry.sh
+
+# 4. Tạo mạng overlay
+./setup-network.sh
+
+# 5. Build và push images
+./build-push-images.sh
+
+# 6. Triển khai stack
+./deploy-stack.sh
+
+# 7. Kiểm tra trạng thái các service
+docker service ls
 ```
 
-Script `setup-all.sh` sẽ thực hiện tất cả các bước sau:
-- Cấp quyền thực thi cho tất cả các script
-- Thiết lập Docker Registry
-- Thiết lập mạng Docker Swarm
-- Cập nhật cấu hình DNS
-- Xử lý vấn đề tương thích ARM (nếu cần)
-- Build và push các images
-- Triển khai stack
-- Kiểm tra trạng thái các service
+#### Cách 2: Triển khai từng bước chi tiết
 
-#### Cách 2: Thiết lập thủ công từng bước
+##### Bước 1: Chuẩn bị môi trường
 
-1. **Cấp quyền thực thi cho các script**:
-   ```bash
-   # Cấp quyền thực thi cho script cấp quyền
-   chmod +x setup-permissions.sh
+```bash
+# Cấp quyền thực thi cho tất cả các script
+chmod +x *.sh
 
-   # Chạy script để cấp quyền cho tất cả các script khác
-   ./setup-permissions.sh
-   ```
+# Dọn dẹp Docker (nếu cần)
+./clean-docker.sh
+```
 
-2. **Xử lý vấn đề tương thích ARM** (cho máy Mac M1/M2):
-   ```bash
-   # Nếu bạn đang sử dụng máy Mac với chip ARM (M1/M2), hãy chạy script này
-   sudo ./fix-arm-compatibility.sh
-   ```
+##### Bước 2: Thiết lập Docker Registry
 
-3. **Dọn dẹp Docker** (nếu cần):
-   ```bash
-   # Dọn dẹp hoàn toàn Docker (containers, services, images, networks, volumes)
-   ./clean-docker.sh
-   ```
+```bash
+# Trên node manager, cấu hình Docker để tin tưởng registry không bảo mật
+sudo ./setup-registry.sh
 
-4. **Cấu hình Docker Registry**:
+# Khởi động registry
+./start-registry.sh
 
-   a. **Trên node manager**, cấu hình Docker để tin tưởng registry không bảo mật:
-   ```bash
-   # Cấu hình Docker (yêu cầu quyền sudo)
-   sudo ./setup-registry.sh
-   ```
+# Kiểm tra registry đã hoạt động
+curl -X GET http://localhost:5000/v2/_catalog
+```
 
-   b. **Khởi động registry**:
-   ```bash
-   # Khởi động và kiểm tra registry
-   ./start-registry.sh
-   ```
+> **Lưu ý**: Nếu địa chỉ IP của node manager không phải là `192.168.19.10`, hãy chỉnh sửa các file `setup-registry.sh`, `build-push-images.sh` và `start-registry.sh` để sử dụng địa chỉ IP thực tế của bạn.
 
-   c. **Trên các worker node**, cấu hình Docker để tin tưởng registry không bảo mật:
-   ```bash
-   # Cấu hình Docker (yêu cầu quyền sudo)
-   sudo ./setup-registry.sh
-   ```
+##### Bước 3: Tạo mạng overlay
 
-   > **Lưu ý**: Nếu địa chỉ IP của node manager không phải là `192.168.19.10`, hãy chỉnh sửa các file `setup-registry.sh`, `build-push-images.sh` và `start-registry.sh` để sử dụng địa chỉ IP thực tế của bạn.
+```bash
+# Tạo mạng overlay cho Docker Swarm
+./setup-network.sh
 
-5. **Tạo mạng overlay**:
-   ```bash
-   # Tạo mạng overlay cho Docker Swarm
-   ./setup-network.sh
-   ```
+# Kiểm tra mạng đã được tạo
+docker network ls
+```
 
-6. **Cập nhật cấu hình DNS**:
-   ```bash
-   # Cập nhật cấu hình DNS trong Docker
-   sudo ./update-dns.sh
-   ```
+##### Bước 4: Build và push images
 
-7. **Build và push images**:
-   ```bash
-   # Build và push các images lên registry
-   ./build-push-images.sh
-   ```
+```bash
+# Build và push các images lên registry
+./build-push-images.sh
 
-   > Nếu gặp lỗi với webui service, đặc biệt là trên máy Mac với chip ARM (M1/M2), bạn có thể sử dụng một trong các script sau:
-   > ```bash
-   > # Script sửa lỗi webui cho máy ARM (khởi động lại registry, xóa cache và build với các tùy chọn đặc biệt)
-   > ./fix-webui.sh
-   >
-   > # Hoặc chỉ rebuild và redeploy webui service
-   > ./rebuild-webui.sh
-   > ```
+# Kiểm tra các images đã được push lên registry
+curl -X GET http://localhost:5000/v2/_catalog
+```
 
-8. **Triển khai stack**:
-   ```bash
-   # Triển khai toàn bộ stack
-   ./deploy-stack.sh
-   ```
+Nếu gặp lỗi với webui service, hãy sử dụng script sửa lỗi:
 
-9. **Kiểm tra triển khai**:
-   ```bash
-   # Kiểm tra trạng thái của tất cả các dịch vụ
-   docker stack services dockercoins
+```bash
+# Sửa lỗi webui cho máy ARM
+./fix-webui.sh
+```
 
-   # Kiểm tra sức khỏe của tất cả các dịch vụ
-   ./check-health.sh
-   ```
+##### Bước 5: Triển khai stack
 
-8. **Truy cập các dịch vụ** thông qua Nginx reverse proxy:
-   - Trang chính: http://<manager-ip>
-   - DockerCoins WebUI: http://<manager-ip>/webui/
-   - Prometheus: http://<manager-ip>/prometheus/
-   - Grafana: http://<manager-ip>/grafana/
-   - Kibana: http://<manager-ip>/kibana/
-   - Elasticsearch: http://<manager-ip>/elasticsearch/
-   - InfluxDB: http://<manager-ip>/influxdb/
+```bash
+# Triển khai toàn bộ stack
+./deploy-stack.sh
 
-   > Thay thế `<manager-ip>` bằng địa chỉ IP của node manager (ví dụ: 192.168.19.10)
+# Kiểm tra trạng thái các service
+docker service ls
+```
+
+##### Bước 6: Kiểm tra và xử lý lỗi
+
+Nếu gặp lỗi với Logstash:
+
+```bash
+# Cập nhật Logstash với 1 replica
+docker service update --replicas 1 dockercoins_logstash
+```
+
+Nếu gặp lỗi với Nginx:
+
+```bash
+# Triển khai lại Nginx
+./redeploy-nginx.sh
+
+# Kiểm tra logs của Nginx
+docker service logs dockercoins_nginx
+```
+
+#### Cách 3: Quản lý từng dịch vụ riêng lẻ
+
+##### Quản lý ELK Stack
+
+```bash
+# Kiểm tra trạng thái của các dịch vụ ELK
+docker service ls | grep 'elasticsearch\|logstash\|kibana'
+
+# Xem logs của Elasticsearch
+docker service logs dockercoins_elasticsearch
+
+# Xem logs của Logstash
+docker service logs dockercoins_logstash
+
+# Xem logs của Kibana
+docker service logs dockercoins_kibana
+
+# Cập nhật cấu hình Logstash (nếu cần)
+docker service update --force dockercoins_logstash
+```
+
+##### Quản lý Prometheus-Grafana-InfluxDB
+
+```bash
+# Kiểm tra trạng thái của các dịch vụ giám sát
+docker service ls | grep 'prometheus\|grafana\|influxdb\|cadvisor\|node-exporter'
+
+# Xem logs của Prometheus
+docker service logs dockercoins_prometheus
+
+# Xem logs của Grafana
+docker service logs dockercoins_grafana
+
+# Xem logs của InfluxDB
+docker service logs dockercoins_influxdb
+```
+
+##### Quản lý Nginx Reverse Proxy
+
+```bash
+# Kiểm tra trạng thái của Nginx
+docker service ls | grep nginx
+
+# Xem logs của Nginx
+docker service logs dockercoins_nginx
+
+# Triển khai lại Nginx (nếu cần)
+./redeploy-nginx.sh
+```
+
+#### Xử lý sự cố thường gặp
+
+##### Lỗi Nginx không phân giải được tên dịch vụ
+
+Nếu gặp lỗi "page unavailable" khi truy cập các dịch vụ qua Nginx:
+
+```bash
+# Triển khai lại Nginx
+./redeploy-nginx.sh
+```
+
+##### Lỗi Logstash không khởi động được
+
+Nếu Logstash không khởi động được (0/2 replicas):
+
+```bash
+# Giảm xuống 1 replica
+docker service update --replicas 1 dockercoins_logstash
+
+# Hoặc cập nhật cấu hình
+docker service update --force dockercoins_logstash
+```
+
+##### Lỗi webui không hoạt động
+
+Nếu webui không hoạt động:
+
+```bash
+# Rebuild và redeploy webui
+./rebuild-webui.sh
+```
+
+#### Truy cập các dịch vụ
+
+Sau khi triển khai thành công, bạn có thể truy cập các dịch vụ qua các URL sau:
+
+- **Dashboard chính**: http://[IP_NODE_MANAGER]/
+- **DockerCoins WebUI**: http://[IP_NODE_MANAGER]/webui/
+- **Prometheus**: http://[IP_NODE_MANAGER]/prometheus/
+- **Grafana**: http://[IP_NODE_MANAGER]/grafana/ (admin/admin)
+- **Kibana**: http://[IP_NODE_MANAGER]/kibana/
+- **Elasticsearch**: http://[IP_NODE_MANAGER]/elasticsearch/
+- **InfluxDB**: http://[IP_NODE_MANAGER]/influxdb/ (admin/adminpassword)
+
+Thay thế `[IP_NODE_MANAGER]` bằng địa chỉ IP của node manager (ví dụ: 192.168.19.10)
 
 ## Demo Commands | Các lệnh demo
 

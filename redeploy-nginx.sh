@@ -21,6 +21,7 @@ docker service create \
   --mount type=bind,source=$(pwd)/nginx.conf,destination=/etc/nginx/nginx.conf,readonly \
   --mount type=bind,source=$(pwd)/index.html,destination=/usr/share/nginx/html/index.html,readonly \
   --constraint node.role==manager \
+  --dns 127.0.0.11 \
   nginx:latest
 
 echo "===== Hoàn tất! ====="
