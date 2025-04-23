@@ -76,69 +76,79 @@ Tất cả các dịch vụ được kết nối thông qua mạng overlay tùy 
 - Sufficient resources (CPU, memory) for running all services
   Đủ tài nguyên (CPU, bộ nhớ) để chạy tất cả các dịch vụ
 
-### Setup and Deployment
+### Setup and Deployment | Cài đặt và triển khai
 
-1. Clone this repository:
+1. **Cấp quyền thực thi cho các script**:
    ```bash
-   git clone <repository-url>
-   cd <repository-directory>
+   # Cấp quyền thực thi cho script cấp quyền
+   chmod +x setup-permissions.sh
+
+   # Chạy script để cấp quyền cho tất cả các script khác
+   ./setup-permissions.sh
    ```
 
-2. Make the deployment scripts executable:
+2. **Dọn dẹp Docker** (nếu cần):
    ```bash
-   chmod +x setup-network.sh deploy-stack.sh build-push-images.sh setup-registry.sh
+   # Dọn dẹp hoàn toàn Docker (containers, services, images, networks, volumes)
+   ./clean-docker.sh
    ```
 
-3. **Setup Docker Registry**:
+3. **Cấu hình Docker Registry**:
 
-   The stack uses custom Docker images that need to be built and pushed to a registry accessible by all nodes in the swarm. Follow these steps to set up the registry:
-
-   a. **On the manager node**, set up the registry:
+   a. **Trên node manager**, cấu hình Docker để tin tưởng registry không bảo mật:
    ```bash
-   # Start the registry container
-   docker run -d -p 5000:5000 --restart=always --name registry registry:2
-   ```
-
-   b. **On all nodes** (manager and workers), configure Docker to trust the insecure registry:
-   ```bash
-   # Run the registry setup script (requires sudo)
+   # Cấu hình Docker (yêu cầu quyền sudo)
    sudo ./setup-registry.sh
    ```
 
-   This script will:
-   - Configure Docker to trust the insecure registry at your manager node's IP
-   - Restart the Docker service to apply changes
-
-   > **Note**: Replace `192.168.19.10` in the `setup-registry.sh` script with your manager node's IP address if different.
-
-4. **Build and Push Images**:
-
-   Build and push the custom images to your registry:
+   b. **Khởi động registry**:
    ```bash
-   # On the manager node
+   # Khởi động và kiểm tra registry
+   ./start-registry.sh
+   ```
+
+   c. **Trên các worker node**, cấu hình Docker để tin tưởng registry không bảo mật:
+   ```bash
+   # Cấu hình Docker (yêu cầu quyền sudo)
+   sudo ./setup-registry.sh
+   ```
+
+   > **Lưu ý**: Nếu địa chỉ IP của node manager không phải là `192.168.19.10`, hãy chỉnh sửa các file `setup-registry.sh`, `build-push-images.sh` và `start-registry.sh` để sử dụng địa chỉ IP thực tế của bạn.
+
+4. **Tạo mạng overlay**:
+   ```bash
+   # Tạo mạng overlay cho Docker Swarm
+   ./setup-network.sh
+   ```
+
+5. **Build và push images**:
+   ```bash
+   # Build và push các images lên registry
    ./build-push-images.sh
    ```
 
-   This script will:
-   - Build the custom images (rng, hasher, webui, worker)
-   - Tag them with your manager node's IP address as the registry
-   - Push them to your registry
+   > Nếu gặp lỗi với webui service, bạn có thể rebuild riêng service này:
+   > ```bash
+   > ./rebuild-webui.sh
+   > ```
 
-   > **Note**: If your manager node's IP is not `192.168.19.10`, edit the `build-push-images.sh` script to use your actual IP.
-
-5. **Deploy the Stack**:
+6. **Triển khai stack**:
    ```bash
+   # Triển khai toàn bộ stack
    ./deploy-stack.sh
    ```
 
-6. **Verify Deployment**:
+7. **Kiểm tra triển khai**:
    ```bash
-   # Check the status of all services
+   # Kiểm tra trạng thái của tất cả các dịch vụ
    docker stack services dockercoins
+
+   # Kiểm tra logs của webui service
+   docker service logs dockercoins_webui
    ```
 
-7. **Access the services** through the Nginx reverse proxy:
-   - Main dashboard: http://<manager-ip>
+8. **Truy cập các dịch vụ** thông qua Nginx reverse proxy:
+   - Trang chính: http://<manager-ip>
    - DockerCoins WebUI: http://<manager-ip>/webui/
    - Prometheus: http://<manager-ip>/prometheus/
    - Grafana: http://<manager-ip>/grafana/
@@ -146,7 +156,7 @@ Tất cả các dịch vụ được kết nối thông qua mạng overlay tùy 
    - Elasticsearch: http://<manager-ip>/elasticsearch/
    - InfluxDB: http://<manager-ip>/influxdb/
 
-   > Replace `<manager-ip>` with your manager node's IP address (e.g., 192.168.19.10)
+   > Thay thế `<manager-ip>` bằng địa chỉ IP của node manager (ví dụ: 192.168.19.10)
 
 ## Demo Commands | Các lệnh demo
 
@@ -604,36 +614,53 @@ Khi triển khai ứng dụng trên Docker Swarm với nhiều node, việc cấ
 
 ### Common Issues | Các vấn đề thường gặp
 
-1. **Registry Access Issues | Vấn đề truy cập Registry**:
-   - **Symptom | Triệu chứng**: Services fail to start with errors like `image 127.0.0.1:5000/dockercoins_rng:latest could not be accessed on a registry` | Các dịch vụ không khởi động được với lỗi như `image 127.0.0.1:5000/dockercoins_rng:latest could not be accessed on a registry`
-   - **Solution | Giải pháp**:
-     - Ensure the registry is running on the manager node: `docker ps | grep registry` | Đảm bảo registry đang chạy trên node quản lý
-     - Verify all nodes can access the registry: `curl -s http://<manager-ip>:5000/v2/_catalog` | Kiểm tra tất cả các node có thể truy cập registry
-     - Make sure Docker is configured to trust the insecure registry on all nodes | Đảm bảo Docker được cấu hình để tin tưởng registry không bảo mật trên tất cả các node
-     - Check that images are properly tagged and pushed: `docker images | grep <manager-ip>:5000` | Kiểm tra các image được gắn thẻ và đẩy lên đúng cách
+1. **Lỗi `Error: Cannot find module 'node:events'` trong webui service**:
+   - **Triệu chứng**: Service webui không khởi động được với lỗi `Error: Cannot find module 'node:events'`
+   - **Nguyên nhân**: Phiên bản Node.js cũ (v4) không hỗ trợ cú pháp `node:` prefix để import các module core
+   - **Giải pháp**:
+     - Đã cập nhật Dockerfile của webui để sử dụng Node.js v16-alpine
+     - Nếu vẫn gặp lỗi, hãy chạy script `./rebuild-webui.sh` để rebuild và redeploy webui service
+     - Kiểm tra logs: `docker service logs dockercoins_webui`
 
-2. **Services not starting | Các dịch vụ không khởi động**:
-   - Check logs: `docker service logs <service_name>` | Kiểm tra logs: `docker service logs <tên_dịch_vụ>`
-   - Verify resource availability: `docker node ls` | Kiểm tra tài nguyên có sẵn: `docker node ls`
-   - Check if the image exists in the registry: `curl -s http://<manager-ip>:5000/v2/dockercoins_<service>/tags/list` | Kiểm tra xem image có tồn tại trong registry không
+2. **Lỗi `http: server gave HTTP response to HTTPS client` khi push image**:
+   - **Triệu chứng**: Không thể push image lên registry với lỗi `http: server gave HTTP response to HTTPS client`
+   - **Nguyên nhân**: Docker đang cố gắng sử dụng HTTPS để kết nối đến registry không bảo mật
+   - **Giải pháp**:
+     - Chạy script `sudo ./setup-registry.sh` trên tất cả các node để cấu hình Docker tin tưởng registry không bảo mật
+     - Khởi động lại Docker: `sudo systemctl restart docker`
+     - Kiểm tra cấu hình: `cat /etc/docker/daemon.json`
 
-3. **Network connectivity issues | Vấn đề kết nối mạng**:
-   - Check network: `docker network inspect hoangkhang-net` | Kiểm tra mạng: `docker network inspect hoangkhang-net`
-   - Verify service discovery: `docker exec -it <container_id> ping <service_name>` | Kiểm tra khả năng phát hiện dịch vụ
-   - Test connectivity between nodes: `ping <other-node-ip>` | Kiểm tra kết nối giữa các node
+3. **Lỗi `npm error Tracker "idealTree" already exists` khi build webui**:
+   - **Triệu chứng**: Không thể build image webui với lỗi `npm error Tracker "idealTree" already exists`
+   - **Giải pháp**:
+     - Đã cập nhật Dockerfile để cài đặt các dependencies trong một lệnh với các tham số `--no-fund --no-audit`
+     - Nếu vẫn gặp lỗi, hãy thử dọn dẹp Docker với `./clean-docker.sh` và thử lại
 
-4. **Elasticsearch not storing logs | Elasticsearch không lưu trữ logs**:
-   - Check Logstash configuration | Kiểm tra cấu hình Logstash
-   - Verify Elasticsearch status: `curl -X GET "http://<manager-ip>/elasticsearch/_cluster/health?pretty"` | Kiểm tra trạng thái Elasticsearch
+4. **Registry Access Issues | Vấn đề truy cập Registry**:
+   - **Triệu chứng**: Các dịch vụ không khởi động được với lỗi như `image 127.0.0.1:5000/dockercoins_rng:latest could not be accessed on a registry`
+   - **Giải pháp**:
+     - Đảm bảo registry đang chạy trên node quản lý: `docker ps | grep registry`
+     - Kiểm tra tất cả các node có thể truy cập registry: `curl -s http://<manager-ip>:5000/v2/_catalog`
+     - Đảm bảo Docker được cấu hình để tin tưởng registry không bảo mật trên tất cả các node
+     - Kiểm tra các image được gắn thẻ và đẩy lên đúng cách: `docker images | grep <manager-ip>:5000`
 
-5. **Prometheus not collecting metrics | Prometheus không thu thập metrics**:
-   - Check targets: `curl -s "http://<manager-ip>/prometheus/api/v1/targets" | jq .` | Kiểm tra các mục tiêu
-   - Verify scrape configuration in `prometheus.yml` | Kiểm tra cấu hình thu thập trong `prometheus.yml`
+5. **Services not starting | Các dịch vụ không khởi động**:
+   - Kiểm tra logs: `docker service logs <service_name>`
+   - Kiểm tra tài nguyên có sẵn: `docker node ls`
+   - Kiểm tra xem image có tồn tại trong registry không: `curl -s http://<manager-ip>:5000/v2/dockercoins_<service>/tags/list`
 
-6. **Docker Swarm Networking Issues | Vấn đề mạng Docker Swarm**:
-   - Verify overlay network creation: `docker network ls --filter driver=overlay` | Kiểm tra việc tạo mạng overlay
-   - Check if services are attached to the correct network: `docker service inspect <service_name> --format '{{.Spec.TaskTemplate.Networks}}'` | Kiểm tra xem các dịch vụ có được gắn vào mạng đúng không
-   - Ensure DNS resolution works within the swarm: `docker exec -it <container_id> nslookup tasks.<service_name>` | Đảm bảo phân giải DNS hoạt động trong swarm
+6. **Network connectivity issues | Vấn đề kết nối mạng**:
+   - Kiểm tra mạng: `docker network inspect hoangkhang-net`
+   - Kiểm tra khả năng phát hiện dịch vụ: `docker exec -it <container_id> ping <service_name>`
+   - Kiểm tra kết nối giữa các node: `ping <other-node-ip>`
+
+7. **Elasticsearch not storing logs | Elasticsearch không lưu trữ logs**:
+   - Kiểm tra cấu hình Logstash
+   - Kiểm tra trạng thái Elasticsearch: `curl -X GET "http://<manager-ip>/elasticsearch/_cluster/health?pretty"`
+
+8. **Prometheus not collecting metrics | Prometheus không thu thập metrics**:
+   - Kiểm tra các mục tiêu: `curl -s "http://<manager-ip>/prometheus/api/v1/targets" | jq .`
+   - Kiểm tra cấu hình thu thập trong `prometheus.yml`
 
 ## License | Giấy phép
 

@@ -1,38 +1,48 @@
 #!/bin/bash
 
-# Set the registry address to the manager node's IP
-REGISTRY=192.168.19.10:5000
+# Script để build và push các images lên registry
 
-# Make sure the registry is running
+# Đặt địa chỉ registry là IP của node manager
+REGISTRY=192.168.19.10:5000
+REGISTRY_IP=192.168.19.10
+
+# Đảm bảo registry đang chạy
 if ! docker ps | grep -q registry; then
-  echo "Starting Docker registry..."
+  echo "Khởi động Docker registry..."
   docker run -d -p 5000:5000 --restart=always --name registry registry:2
 else
-  echo "Docker registry is already running."
+  echo "Docker registry đã đang chạy."
 fi
 
-# Build and push the images
-echo "Building and pushing images to $REGISTRY..."
+# Kiểm tra kết nối đến registry
+echo "Kiểm tra kết nối đến registry..."
+if ! curl -s http://$REGISTRY_IP:5000/v2/ > /dev/null; then
+  echo "Cảnh báo: Không thể kết nối đến registry. Hãy chạy 'sudo ./setup-registry.sh' trên tất cả các node."
+  echo "Tiếp tục build nhưng có thể sẽ gặp lỗi khi push..."
+fi
 
-# Build and push rng
-echo "Building and pushing rng..."
+# Build và push các images
+echo "Building và pushing images lên $REGISTRY..."
+
+# Build và push rng
+echo "Building và pushing rng..."
 docker build -t $REGISTRY/dockercoins_rng:latest ./rng
-docker push $REGISTRY/dockercoins_rng:latest
+docker push $REGISTRY/dockercoins_rng:latest || echo "Lỗi khi push rng image. Hãy kiểm tra kết nối đến registry."
 
-# Build and push hasher
-echo "Building and pushing hasher..."
+# Build và push hasher
+echo "Building và pushing hasher..."
 docker build -t $REGISTRY/dockercoins_hasher:latest ./hasher
-docker push $REGISTRY/dockercoins_hasher:latest
+docker push $REGISTRY/dockercoins_hasher:latest || echo "Lỗi khi push hasher image. Hãy kiểm tra kết nối đến registry."
 
-# Build and push webui
-echo "Building and pushing webui..."
+# Build và push webui
+echo "Building và pushing webui..."
 docker build -t $REGISTRY/dockercoins_webui:latest ./webui
-docker push $REGISTRY/dockercoins_webui:latest
+docker push $REGISTRY/dockercoins_webui:latest || echo "Lỗi khi push webui image. Hãy kiểm tra kết nối đến registry."
 
-# Build and push worker
-echo "Building and pushing worker..."
+# Build và push worker
+echo "Building và pushing worker..."
 docker build -t $REGISTRY/dockercoins_worker:latest ./worker
-docker push $REGISTRY/dockercoins_worker:latest
+docker push $REGISTRY/dockercoins_worker:latest || echo "Lỗi khi push worker image. Hãy kiểm tra kết nối đến registry."
 
-echo "All images built and pushed to $REGISTRY"
-echo "You can now deploy the stack with: ./deploy-stack.sh"
+echo "Tất cả images đã được build và push lên $REGISTRY"
+echo "Bạn có thể triển khai stack bằng lệnh: ./deploy-stack.sh"
