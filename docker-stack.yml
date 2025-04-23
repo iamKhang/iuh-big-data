@@ -78,7 +78,9 @@ services:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.14.0
     environment:
       - discovery.type=single-node
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+      - "bootstrap.memory_lock=true"
+      - "xpack.security.enabled=false"
     volumes:
       - ./elk/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
       - elasticsearch-data:/usr/share/elasticsearch/data
@@ -86,7 +88,16 @@ services:
       replicas: 1
       resources:
         limits:
-          memory: 1G
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     networks:
       - hoangkhang-net
 
@@ -95,12 +106,17 @@ services:
     volumes:
       - ./elk/config/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
     environment:
-      - "LS_JAVA_OPTS=-Xms256m -Xmx256m"
+      - "LS_JAVA_OPTS=-Xms128m -Xmx256m"
     deploy:
-      replicas: 2
+      replicas: 1
       resources:
         limits:
-          memory: 512M
+          memory: 384M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     depends_on:
       - elasticsearch
     networks:
@@ -110,11 +126,19 @@ services:
     image: docker.elastic.co/kibana/kibana:7.14.0
     volumes:
       - ./elk/config/kibana.yml:/usr/share/kibana/config/kibana.yml
+    environment:
+      - "ELASTICSEARCH_HOSTS=http://elasticsearch:9200"
+      - "SERVER_NAME=kibana"
     deploy:
       replicas: 1
       resources:
         limits:
           memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     depends_on:
       - elasticsearch
     networks:
@@ -143,14 +167,25 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
     deploy:
       replicas: 1
       resources:
         limits:
           memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      placement:
+        constraints:
+          - node.role == manager
     networks:
       - hoangkhang-net
 
+  # Node-exporter có thể gặp vấn đề trên ARM
   node-exporter:
     image: prom/node-exporter:v1.2.2
     volumes:
@@ -162,22 +197,31 @@ services:
       - '--path.sysfs=/host/sys'
       - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
     deploy:
-      mode: global
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      placement:
+        constraints:
+          - node.role == manager
     networks:
       - hoangkhang-net
 
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.39.3
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
-    deploy:
-      mode: global
-    networks:
-      - hoangkhang-net
+  # cAdvisor bị bỏ qua vì không tương thích với ARM
+  # cadvisor:
+  #   image: gcr.io/cadvisor/cadvisor:v0.39.3
+  #   volumes:
+  #     - /:/rootfs:ro
+  #     - /var/run:/var/run:ro
+  #     - /sys:/sys:ro
+  #     - /var/lib/docker/:/var/lib/docker:ro
+  #     - /dev/disk/:/dev/disk:ro
+  #   deploy:
+  #     mode: global
+  #   networks:
+  #     - hoangkhang-net
 
   grafana:
     image: grafana/grafana:8.1.2

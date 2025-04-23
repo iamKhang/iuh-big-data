@@ -30,6 +30,14 @@ Dự án này triển khai ứng dụng DockerCoins (bao gồm các dịch vụ 
 - Các node có địa chỉ IP cố định (192.168.19.10 cho manager và 192.168.19.11 cho worker)
 - Ít nhất 4GB RAM và 10GB dung lượng ổ đĩa trống trên mỗi node
 
+### Lưu ý cho môi trường ARM (Apple Silicon)
+
+Dự án đã được điều chỉnh để hoạt động trên kiến trúc ARM (như Macbook M2):
+
+- Một số dịch vụ như cAdvisor đã bị tắt vì không tương thích với ARM
+- Các dịch vụ ELK Stack và Prometheus đã được điều chỉnh để sử dụng ít bộ nhớ hơn
+- Các dịch vụ được cấu hình để chạy trên node manager thay vì phân tán trên cả cụm
+
 ## Cấu trúc dự án
 
 ```
@@ -278,3 +286,29 @@ docker service update --force dockercoins_<service_name>
 docker stack rm dockercoins
 docker stack deploy -c docker-stack.yml dockercoins
 ```
+
+### Xử lý vấn đề với kiến trúc ARM (Apple Silicon)
+
+Nếu bạn gặp vấn đề "unsupported platform" hoặc các lỗi tương tự, hãy thử các giải pháp sau:
+
+1. **Đảm bảo sử dụng các image tương thích với ARM**:
+   ```bash
+   # Kiểm tra kiến trúc của image
+   docker inspect --format '{{.Architecture}}' <image_name>
+   ```
+
+2. **Giảm bộ nhớ cấp cho các dịch vụ**:
+   ```bash
+   # Chỉnh sửa giới hạn bộ nhớ trong docker-stack.yml
+   # Ví dụ: giảm từ 1G xuống 512M
+   ```
+
+3. **Tắt các dịch vụ không cần thiết**:
+   ```bash
+   # Bỏ comment các dịch vụ không tương thích trong docker-stack.yml
+   ```
+
+4. **Sử dụng các phiên bản mới hơn của các image**:
+   ```bash
+   # Cập nhật phiên bản image trong docker-stack.yml
+   ```

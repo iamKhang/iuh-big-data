@@ -29,9 +29,22 @@ docker image prune -a -f
 echo "Đang tạo mạng hoangkhang-net..."
 docker network create --driver overlay --attachable hoangkhang-net || true
 
+# Kiểm tra và dừng registry nếu đang chạy
+echo "Kiểm tra và dừng registry nếu đang chạy..."
+docker stop registry 2>/dev/null || true
+docker rm registry 2>/dev/null || true
+
 # Khởi động registry local
 echo "Đang khởi động registry local..."
-docker run -d -p 5000:5000 --restart=always --name registry registry:2 || true
+docker run -d -p 5000:5000 --restart=always --name registry registry:2
+
+# Đảm bảo registry đã khởi động
+echo "Kiểm tra registry đã khởi động..."
+sleep 2
+if ! docker ps | grep -q registry; then
+    echo "Lỗi: Registry không thể khởi động. Vui lòng kiểm tra lại."
+    exit 1
+fi
 
 # Hiển thị thông báo hoàn thành
 echo "===== THIẾT LẬP MÔI TRƯỜNG HOÀN TẤT ====="
