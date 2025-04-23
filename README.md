@@ -47,6 +47,8 @@ Tất cả các dịch vụ được kết nối thông qua mạng overlay tùy 
 | logstash | Collects and processes logs from all services | 2 | Thu thập và xử lý logs từ tất cả các dịch vụ |
 | kibana | Web UI for visualizing and analyzing logs | 1 | Giao diện web để hiển thị và phân tích logs |
 
+Logstash được cấu hình để thu thập logs từ 4 services chính: rng, hasher, worker và webui. Các logs được xử lý và lọc để trích xuất các thông tin quan trọng như timestamp, log level, và nội dung log. Sau đó, logs được gửi đến Elasticsearch để lưu trữ và đánh chỉ mục. Kibana cung cấp giao diện để tìm kiếm, trực quan hóa và phân tích các logs này.
+
 ### Monitoring Stack | Stack giám sát
 
 | Service | Description | Replicas | Mô tả (Tiếng Việt) |
@@ -57,11 +59,34 @@ Tất cả các dịch vụ được kết nối thông qua mạng overlay tùy 
 | node-exporter | Collects system metrics from each node | global | Thu thập metrics hệ thống từ mỗi node |
 | cadvisor | Collects container metrics | global | Thu thập metrics từ các container |
 
+Hệ thống giám sát được cấu hình để thu thập các metrics quan trọng từ tất cả các node trong cụm, bao gồm:
+
+- **CPU, RAM, disk usage**: Thông tin về sử dụng CPU, bộ nhớ và ổ đĩa trên tất cả các node
+- **Process information**: Thông tin về các process và trạng thái của chúng
+- **File descriptors**: Số lượng file đang mở, sockets và trạng thái của chúng
+- **I/O operations**: Hoạt động I/O (disk, network) trên thao tác hoặc dung lượng
+- **Hardware metrics**: Thông tin về phần cứng vật lý như nhiệt độ CPU, tốc độ quạt (nếu có)
+
+Prometheus thu thập và lưu trữ các metrics ngắn hạn, trong khi InfluxDB được sử dụng để lưu trữ dài hạn. Grafana cung cấp giao diện để tạo các dashboard trực quan hóa các metrics này.
+
 ### Reverse Proxy | Reverse Proxy
 
 | Service | Description | Replicas | Mô tả (Tiếng Việt) |
 |---------|-------------|----------|---------------------|
-| nginx | Reverse proxy for accessing all services | 2 | Reverse proxy để truy cập tất cả các dịch vụ |
+| nginx | Reverse proxy for accessing all services | 1 | Reverse proxy để truy cập tất cả các dịch vụ |
+
+Nginx được cấu hình làm reverse proxy để cung cấp một điểm truy cập duy nhất đến tất cả các dịch vụ trong hệ thống. Cấu hình URL routing cho phép truy cập các dịch vụ thông qua các đường dẫn sau:
+
+- `/webui/` - Truy cập vào giao diện web của DockerCoins
+- `/rng/` - Truy cập vào dịch vụ tạo số ngẫu nhiên
+- `/hasher/` - Truy cập vào dịch vụ băm
+- `/prometheus/` - Truy cập vào giao diện Prometheus
+- `/grafana/` - Truy cập vào giao diện Grafana
+- `/kibana/` - Truy cập vào giao diện Kibana
+- `/elasticsearch/` - Truy cập vào API của Elasticsearch
+- `/influxdb/` - Truy cập vào giao diện InfluxDB
+
+Nginx sử dụng cấu hình resolver đặc biệt để đảm bảo phân giải đúng tên dịch vụ trong môi trường Docker Swarm.
 
 ## Deployment Instructions | Hướng dẫn triển khai
 
@@ -77,6 +102,28 @@ Tất cả các dịch vụ được kết nối thông qua mạng overlay tùy 
   Đủ tài nguyên (CPU, bộ nhớ) để chạy tất cả các dịch vụ
 
 ### Setup and Deployment | Cài đặt và triển khai
+
+#### Cách 1: Sử dụng script thiết lập tất cả (Khuyến nghị)
+
+```bash
+# Cấp quyền thực thi cho script thiết lập tất cả
+chmod +x setup-all.sh
+
+# Chạy script để thiết lập toàn bộ hệ thống
+./setup-all.sh
+```
+
+Script `setup-all.sh` sẽ thực hiện tất cả các bước sau:
+- Cấp quyền thực thi cho tất cả các script
+- Thiết lập Docker Registry
+- Thiết lập mạng Docker Swarm
+- Cập nhật cấu hình DNS
+- Xử lý vấn đề tương thích ARM (nếu cần)
+- Build và push các images
+- Triển khai stack
+- Kiểm tra trạng thái các service
+
+#### Cách 2: Thiết lập thủ công từng bước
 
 1. **Cấp quyền thực thi cho các script**:
    ```bash
@@ -99,7 +146,7 @@ Tất cả các dịch vụ được kết nối thông qua mạng overlay tùy 
    ./clean-docker.sh
    ```
 
-3. **Cấu hình Docker Registry**:
+4. **Cấu hình Docker Registry**:
 
    a. **Trên node manager**, cấu hình Docker để tin tưởng registry không bảo mật:
    ```bash
@@ -121,13 +168,19 @@ Tất cả các dịch vụ được kết nối thông qua mạng overlay tùy 
 
    > **Lưu ý**: Nếu địa chỉ IP của node manager không phải là `192.168.19.10`, hãy chỉnh sửa các file `setup-registry.sh`, `build-push-images.sh` và `start-registry.sh` để sử dụng địa chỉ IP thực tế của bạn.
 
-4. **Tạo mạng overlay**:
+5. **Tạo mạng overlay**:
    ```bash
    # Tạo mạng overlay cho Docker Swarm
    ./setup-network.sh
    ```
 
-5. **Build và push images**:
+6. **Cập nhật cấu hình DNS**:
+   ```bash
+   # Cập nhật cấu hình DNS trong Docker
+   sudo ./update-dns.sh
+   ```
+
+7. **Build và push images**:
    ```bash
    # Build và push các images lên registry
    ./build-push-images.sh
@@ -142,19 +195,19 @@ Tất cả các dịch vụ được kết nối thông qua mạng overlay tùy 
    > ./rebuild-webui.sh
    > ```
 
-6. **Triển khai stack**:
+8. **Triển khai stack**:
    ```bash
    # Triển khai toàn bộ stack
    ./deploy-stack.sh
    ```
 
-7. **Kiểm tra triển khai**:
+9. **Kiểm tra triển khai**:
    ```bash
    # Kiểm tra trạng thái của tất cả các dịch vụ
    docker stack services dockercoins
 
-   # Kiểm tra logs của webui service
-   docker service logs dockercoins_webui
+   # Kiểm tra sức khỏe của tất cả các dịch vụ
+   ./check-health.sh
    ```
 
 8. **Truy cập các dịch vụ** thông qua Nginx reverse proxy:

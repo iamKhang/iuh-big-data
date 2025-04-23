@@ -18,6 +18,8 @@ SCRIPTS=(
   "fix-arm-compatibility.sh"
   "update-dns.sh"
   "redeploy-nginx.sh"
+  "setup-all.sh"
+  "check-health.sh"
 )
 
 # Cấp quyền thực thi cho từng script

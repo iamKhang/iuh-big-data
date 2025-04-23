@@ -81,29 +81,86 @@ services:
         max-file: "3"
 
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:latest
     volumes:
       - prometheus_data:/prometheus
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
     networks:
       - hoangkhang-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     deploy:
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        window: 120s
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.2'
       placement:
         constraints: [node.role == manager]
 
   grafana:
-    image: grafana/grafana
+    image: grafana/grafana:latest
     volumes:
       - grafana_data:/var/lib/grafana
     networks:
       - hoangkhang-net
-    deploy:
-      placement:
-        constraints: [node.role == manager]
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel
+      - GF_SERVER_ROOT_URL=http://localhost/grafana
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_DASHBOARDS_MIN_REFRESH_INTERVAL=5s
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      - prometheus
+      - influxdb
+    deploy:
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        window: 120s
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.2'
+      placement:
+        constraints: [node.role == manager]
 
   influxdb:
     image: influxdb:2.7
@@ -111,9 +168,6 @@ services:
       - influxdb_data:/var/lib/influxdb2
     networks:
       - hoangkhang-net
-    deploy:
-      placement:
-        constraints: [node.role == manager]
     environment:
       - DOCKER_INFLUXDB_INIT_MODE=setup
       - DOCKER_INFLUXDB_INIT_USERNAME=admin
@@ -121,22 +175,76 @@ services:
       - DOCKER_INFLUXDB_INIT_ORG=dockercoins
       - DOCKER_INFLUXDB_INIT_BUCKET=metrics
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=mytoken
+      - DOCKER_INFLUXDB_INIT_RETENTION=15d
+      - INFLUXD_LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        window: 120s
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.2'
+      placement:
+        constraints: [node.role == manager]
 
   node-exporter:
-    image: prom/node-exporter
+    image: prom/node-exporter:latest
     command:
       - '--path.procfs=/host/proc'
       - '--path.sysfs=/host/sys'
       - '--path.rootfs=/rootfs'
       - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--collector.cpu'
+      - '--collector.diskstats'
+      - '--collector.filesystem'
+      - '--collector.loadavg'
+      - '--collector.meminfo'
+      - '--collector.filefd'
+      - '--collector.netdev'
+      - '--collector.stat'
+      - '--collector.netstat'
+      - '--collector.systemd'
+      - '--collector.uname'
+      - '--collector.vmstat'
+      - '--collector.time'
+      - '--collector.tcpstat'
+      - '--collector.hwmon'
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
     networks:
       - hoangkhang-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9100/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     deploy:
       mode: global
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        window: 120s
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
@@ -145,10 +253,26 @@ services:
       - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg:/dev/kmsg
     networks:
       - hoangkhang-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     deploy:
       mode: global
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        window: 120s
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.17.10
@@ -156,20 +280,42 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - bootstrap.memory_lock=true
+      - cluster.name=dockercoins-cluster
+      - network.host=0.0.0.0
     ulimits:
       memlock:
         soft: -1
         hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
     volumes:
       - es_data:/usr/share/elasticsearch/data
     networks:
       - hoangkhang-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     deploy:
+      update_config:
+        parallelism: 1
+        delay: 60s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        window: 120s
       resources:
         limits:
           memory: 1G
+          cpus: '0.7'
         reservations:
           memory: 512M
+          cpus: '0.3'
       placement:
         constraints: [node.role == manager]
 
@@ -177,6 +323,7 @@ services:
     image: docker.elastic.co/logstash/logstash:7.17.10
     volumes:
       - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - /var/log/docker:/var/log/docker:ro
     networks:
       - hoangkhang-net
     # Sử dụng port khác để tránh xung đột
@@ -189,14 +336,30 @@ services:
         mode: host
     environment:
       - "LS_JAVA_OPTS=-Xmx512m -Xms512m"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9600"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     deploy:
-      # Giảm xuống 1 replica để tránh xung đột port và giảm tài nguyên sử dụng
-      replicas: 1
+      # Cấu hình 2 replicas theo yêu cầu
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        window: 120s
       resources:
         limits:
           memory: 1G
+          cpus: '0.5'
         reservations:
           memory: 512M
+          cpus: '0.2'
       placement:
         constraints: [node.role == manager]
 
@@ -206,14 +369,36 @@ services:
       - xpack.security.enabled=false
       - elasticsearch.hosts=http://elasticsearch:9200
       - elasticsearch.ssl.verificationMode=none
+      - server.name=kibana
+      - server.host=0.0.0.0
+      - server.publicBaseUrl=http://localhost/kibana
+      - monitoring.ui.container.elasticsearch.enabled=true
     networks:
       - hoangkhang-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5601/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      - elasticsearch
     deploy:
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        window: 120s
       resources:
         limits:
           memory: 1G
+          cpus: '0.5'
         reservations:
           memory: 512M
+          cpus: '0.2'
       placement:
         constraints: [node.role == manager]
 
@@ -229,9 +414,39 @@ services:
         mode: host
     networks:
       - hoangkhang-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      - webui
+      - rng
+      - hasher
+      - prometheus
+      - grafana
+      - kibana
+      - elasticsearch
+      - influxdb
     deploy:
       # Chỉ chạy 1 replica để tránh xung đột port khi sử dụng mode host
       replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        window: 120s
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.3'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
       placement:
         constraints: [node.role == manager]
 

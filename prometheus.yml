@@ -1,40 +1,101 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  scrape_timeout: 10s
 
+# Cấu hình các rule để cảnh báo
+rule_files:
+  # - "alert_rules.yml"
+
+# Cấu hình các job thu thập metrics
 scrape_configs:
+  # Thu thập metrics từ node-exporter
   - job_name: 'node-exporter'
+    scrape_interval: 10s
     static_configs:
       - targets: ['node-exporter:9100']
+    metrics_path: /metrics
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '(.*)'
+        replacement: '$1'
 
+  # Thu thập metrics từ cAdvisor
   - job_name: 'cadvisor'
+    scrape_interval: 10s
     static_configs:
       - targets: ['cadvisor:8080']
+    metrics_path: /metrics
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '(.*)'
+        replacement: '$1'
 
+  # Thu thập metrics từ Prometheus
   - job_name: 'prometheus'
+    scrape_interval: 10s
     static_configs:
       - targets: ['localhost:9090']
+    metrics_path: /metrics
 
+  # Thu thập metrics từ RNG service
   - job_name: 'rng'
+    scrape_interval: 5s
     dns_sd_configs:
       - names: ['tasks.rng']
         type: 'A'
         port: 80
+    metrics_path: /metrics
 
+  # Thu thập metrics từ Hasher service
   - job_name: 'hasher'
+    scrape_interval: 5s
     dns_sd_configs:
       - names: ['tasks.hasher']
         type: 'A'
         port: 80
+    metrics_path: /metrics
 
+  # Thu thập metrics từ WebUI service
   - job_name: 'webui'
+    scrape_interval: 5s
     dns_sd_configs:
       - names: ['tasks.webui']
         type: 'A'
         port: 80
+    metrics_path: /metrics
 
+  # Thu thập metrics từ Worker service
   - job_name: 'worker'
+    scrape_interval: 5s
     dns_sd_configs:
       - names: ['tasks.worker']
         type: 'A'
         port: 80
+    metrics_path: /metrics
+
+  # Thu thập metrics từ Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    metrics_path: /metrics
+
+  # Thu thập metrics từ Elasticsearch
+  - job_name: 'elasticsearch'
+    metrics_path: /_prometheus/metrics
+    static_configs:
+      - targets: ['elasticsearch:9200']
+
+  # Thu thập metrics từ Kibana
+  - job_name: 'kibana'
+    metrics_path: /api/status
+    static_configs:
+      - targets: ['kibana:5601']
+
+  # Thu thập metrics từ Nginx
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:80']
+    metrics_path: /metrics
