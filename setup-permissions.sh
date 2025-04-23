@@ -17,6 +17,7 @@ SCRIPTS=(
   "fix-webui.sh"
   "fix-arm-compatibility.sh"
   "update-dns.sh"
+  "redeploy-nginx.sh"
 )
 
 # Cấp quyền thực thi cho từng script

@@ -682,6 +682,20 @@ location /elasticsearch/ {
 
 Việc sử dụng biến trong proxy_pass buộc Nginx phải resolve tên service mỗi khi có request, tránh việc cache DNS không chính xác.
 
+#### Xử lý lỗi 404 trong Nginx
+
+Nếu bạn gặp lỗi 404 khi truy cập các URL như `/query`, `/spaces/enter`, `/login`, hoặc các file JavaScript, bạn có thể sử dụng script `redeploy-nginx.sh` để triển khai lại service Nginx với cấu hình đã được cập nhật:
+
+```bash
+# Cấp quyền thực thi cho script
+chmod +x redeploy-nginx.sh
+
+# Chạy script để triển khai lại service Nginx
+./redeploy-nginx.sh
+```
+
+Cấu hình mới của Nginx bao gồm các location đặc biệt cho các endpoint như `/query`, `/spaces/`, `/login` và các file JavaScript, đảm bảo rằng tất cả các request được chuyển tiếp đến các service tương ứng.
+
 ## Troubleshooting | Xử lý sự cố
 
 ### Common Issues | Các vấn đề thường gặp
@@ -737,7 +751,7 @@ Việc sử dụng biến trong proxy_pass buộc Nginx phải resolve tên serv
    - **Giải pháp**:
      - Cập nhật file `nginx.conf` để thêm resolver và sử dụng biến trong proxy_pass
      - Chạy script `sudo ./update-dns.sh` để cập nhật cấu hình DNS trong Docker
-     - Triển khai lại stack: `./deploy-stack.sh`
+     - Triển khai lại service Nginx: `./redeploy-nginx.sh`
      - Kiểm tra logs của Nginx: `docker service logs dockercoins_nginx`
 
 7. **Network connectivity issues | Vấn đề kết nối mạng**:
