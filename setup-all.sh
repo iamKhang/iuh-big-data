@@ -50,9 +50,9 @@ fi
 echo "===== Triển khai Docker Stack ====="
 ./deploy-stack.sh
 
-# Đợi 20 giây để các dịch vụ khởi động
-echo "Chờ các dịch vụ khởi động (20 giây)..."
-sleep 20
+# Đợi 30 giây để các dịch vụ khởi động
+echo "Chờ các dịch vụ khởi động (30 giây)..."
+sleep 30
 
 # Kiểm tra trạng thái các service
 echo "===== Kiểm tra trạng thái các service ====="
@@ -62,9 +62,9 @@ docker stack services dockercoins
 echo "Triển khai lại stack để đảm bảo tất cả các dịch vụ được tạo..."
 docker stack deploy -c docker-stack.yml dockercoins
 
-# Đợi thêm 20 giây để các dịch vụ khởi động hoàn toàn
-echo "Chờ thêm 20 giây để các dịch vụ khởi động hoàn toàn..."
-sleep 20
+# Đợi thêm 60 giây để các dịch vụ khởi động hoàn toàn
+echo "Chờ thêm 60 giây để các dịch vụ khởi động hoàn toàn..."
+sleep 60
 
 # Kiểm tra lại trạng thái các service
 echo "===== Kiểm tra lại trạng thái các service ====="
@@ -74,18 +74,26 @@ docker stack services dockercoins
 echo "===== Triển khai lại Nginx ====="
 ./redeploy-nginx.sh
 
+# Đợi thêm 30 giây để Nginx khởi động
+echo "Chờ thêm 30 giây để Nginx khởi động..."
+sleep 30
+
+# Đảm bảo tất cả các dịch vụ đang chạy
+echo "===== Đảm bảo tất cả các dịch vụ đang chạy ====="
+./ensure-services.sh
+
 # Lấy địa chỉ IP của máy
 IP_ADDR=$(hostname -I | awk '{print $1}')
 
 echo "===== THIẾT LẬP HOÀN TẤT ====="
 echo "Bạn có thể truy cập các dịch vụ qua các URL sau:"
-echo "- Dashboard: http://$IP_ADDR/"
-echo "- DockerCoins WebUI: http://$IP_ADDR/webui/"
-echo "- Prometheus: http://$IP_ADDR/prometheus/"
-echo "- Grafana: http://$IP_ADDR/grafana/ (admin/admin)"
-echo "- Kibana: http://$IP_ADDR/kibana/"
-echo "- Elasticsearch: http://$IP_ADDR/elasticsearch/"
-echo "- InfluxDB: http://$IP_ADDR/influxdb/ (admin/adminpassword)"
+echo "- Dashboard: http://$IP_ADDR:8090/"
+echo "- DockerCoins WebUI: http://$IP_ADDR:8090/webui/"
+echo "- Prometheus: http://$IP_ADDR:8090/prometheus/"
+echo "- Grafana: http://$IP_ADDR:8090/grafana/ (admin/admin)"
+echo "- Kibana: http://$IP_ADDR:8090/kibana/"
+echo "- Elasticsearch: http://$IP_ADDR:8090/elasticsearch/"
+echo "- InfluxDB: http://$IP_ADDR:8090/influxdb/ (admin/adminpassword)"
 
 echo "Để kiểm tra logs của các service:"
 echo "docker service logs dockercoins_webui"

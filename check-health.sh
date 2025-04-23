@@ -38,30 +38,46 @@ NGINX_CONTAINER=$(docker ps | grep nginx | head -n1 | awk '{print $1}')
 
 if [ -n "$NGINX_CONTAINER" ]; then
   echo "Kiểm tra kết nối từ Nginx đến các dịch vụ khác..."
-  
+
   echo -e "\nKiểm tra kết nối đến Elasticsearch:"
   docker exec $NGINX_CONTAINER curl -s -o /dev/null -w "%{http_code}" http://elasticsearch:9200/
-  
+  echo -e "\nKiểm tra kết nối đến Elasticsearch (với tên đầy đủ):"
+  docker exec $NGINX_CONTAINER curl -s -o /dev/null -w "%{http_code}" http://dockercoins_elasticsearch:9200/
+
   echo -e "\nKiểm tra kết nối đến Kibana:"
   docker exec $NGINX_CONTAINER curl -s -o /dev/null -w "%{http_code}" http://kibana:5601/api/status
-  
+  echo -e "\nKiểm tra kết nối đến Kibana (với tên đầy đủ):"
+  docker exec $NGINX_CONTAINER curl -s -o /dev/null -w "%{http_code}" http://dockercoins_kibana:5601/api/status
+
   echo -e "\nKiểm tra kết nối đến Prometheus:"
   docker exec $NGINX_CONTAINER curl -s -o /dev/null -w "%{http_code}" http://prometheus:9090/-/healthy
-  
+  echo -e "\nKiểm tra kết nối đến Prometheus (với tên đầy đủ):"
+  docker exec $NGINX_CONTAINER curl -s -o /dev/null -w "%{http_code}" http://dockercoins_prometheus:9090/-/healthy
+
   echo -e "\nKiểm tra kết nối đến Grafana:"
   docker exec $NGINX_CONTAINER curl -s -o /dev/null -w "%{http_code}" http://grafana:3000/api/health
-  
+  echo -e "\nKiểm tra kết nối đến Grafana (với tên đầy đủ):"
+  docker exec $NGINX_CONTAINER curl -s -o /dev/null -w "%{http_code}" http://dockercoins_grafana:3000/api/health
+
   echo -e "\nKiểm tra kết nối đến InfluxDB:"
   docker exec $NGINX_CONTAINER curl -s -o /dev/null -w "%{http_code}" http://influxdb:8086/health
-  
+  echo -e "\nKiểm tra kết nối đến InfluxDB (với tên đầy đủ):"
+  docker exec $NGINX_CONTAINER curl -s -o /dev/null -w "%{http_code}" http://dockercoins_influxdb:8086/health
+
   echo -e "\nKiểm tra kết nối đến WebUI:"
   docker exec $NGINX_CONTAINER curl -s -o /dev/null -w "%{http_code}" http://webui:80/
-  
+  echo -e "\nKiểm tra kết nối đến WebUI (với tên đầy đủ):"
+  docker exec $NGINX_CONTAINER curl -s -o /dev/null -w "%{http_code}" http://dockercoins_webui:80/
+
   echo -e "\nKiểm tra kết nối đến RNG:"
   docker exec $NGINX_CONTAINER curl -s -o /dev/null -w "%{http_code}" http://rng:80/
-  
+  echo -e "\nKiểm tra kết nối đến RNG (với tên đầy đủ):"
+  docker exec $NGINX_CONTAINER curl -s -o /dev/null -w "%{http_code}" http://dockercoins_rng:80/
+
   echo -e "\nKiểm tra kết nối đến Hasher:"
   docker exec $NGINX_CONTAINER curl -s -o /dev/null -w "%{http_code}" http://hasher:80/
+  echo -e "\nKiểm tra kết nối đến Hasher (với tên đầy đủ):"
+  docker exec $NGINX_CONTAINER curl -s -o /dev/null -w "%{http_code}" http://dockercoins_hasher:80/
 else
   echo "Không tìm thấy container Nginx đang chạy."
 fi

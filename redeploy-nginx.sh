@@ -21,7 +21,7 @@ echo "Triển khai lại service Nginx..."
 docker service create \
   --name dockercoins_nginx \
   --network hoangkhang-net \
-  --publish mode=host,published=80,target=80 \
+  --publish mode=host,published=8090,target=80 \
   --mount type=bind,source=$(pwd)/nginx.conf,destination=/etc/nginx/nginx.conf,readonly \
   --mount type=bind,source=$(pwd)/index.html,destination=/usr/share/nginx/html/index.html,readonly \
   --constraint node.role==manager \
@@ -42,6 +42,6 @@ docker service logs dockercoins_nginx --tail 10
 IP_ADDR=$(hostname -I | awk '{print $1}')
 
 echo "===== Hoàn tất! ====="
-echo "Bạn có thể truy cập Nginx qua: http://$IP_ADDR/"
+echo "Bạn có thể truy cập Nginx qua: http://$IP_ADDR:8090/"
 echo "Kiểm tra logs của service Nginx:"
 echo "docker service logs dockercoins_nginx --follow"

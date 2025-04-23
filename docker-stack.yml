@@ -399,12 +399,12 @@ services:
     # Sử dụng mode host để tránh cần mạng ingress
     ports:
       - target: 80
-        published: 80
+        published: 8090
         mode: host
     networks:
       - hoangkhang-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/"]
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
       interval: 30s
       timeout: 10s
       retries: 3
