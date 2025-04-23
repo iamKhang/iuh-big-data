@@ -3,7 +3,7 @@ version: '3.8'
 services:
   rng:
     build: ./rng
-    image: ${REGISTRY-127.0.0.1:5000}/dockercoins_rng:${TAG-latest}
+    image: ${REGISTRY-192.168.19.10:5000}/dockercoins_rng:${TAG-latest}
     deploy:
       replicas: 3
       restart_policy:
@@ -20,7 +20,7 @@ services:
 
   hasher:
     build: ./hasher
-    image: ${REGISTRY-127.0.0.1:5000}/dockercoins_hasher:${TAG-latest}
+    image: ${REGISTRY-192.168.19.10:5000}/dockercoins_hasher:${TAG-latest}
     deploy:
       replicas: 3
       restart_policy:
@@ -37,7 +37,7 @@ services:
 
   webui:
     build: ./webui
-    image: ${REGISTRY-127.0.0.1:5000}/dockercoins_webui:${TAG-latest}
+    image: ${REGISTRY-192.168.19.10:5000}/dockercoins_webui:${TAG-latest}
     volumes:
       - webui_files:/files/
     deploy:
@@ -65,7 +65,7 @@ services:
 
   worker:
     build: ./worker
-    image: ${REGISTRY-127.0.0.1:5000}/dockercoins_worker:${TAG-latest}
+    image: ${REGISTRY-192.168.19.10:5000}/dockercoins_worker:${TAG-latest}
     deploy:
       replicas: 5
       restart_policy:
