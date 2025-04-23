@@ -15,6 +15,7 @@ SCRIPTS=(
   "start-registry.sh"
   "setup-permissions.sh"
   "fix-webui.sh"
+  "fix-arm-compatibility.sh"
 )
 
 # Cấp quyền thực thi cho từng script

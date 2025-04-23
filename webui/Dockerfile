@@ -1,13 +1,13 @@
-FROM node:16-alpine
+# Sử dụng node:14-alpine cho tính tương thích tốt hơn với ARM
+FROM node:14-alpine
 
-# Tạo thư mục làm việc và copy package.json
+# Tạo thư mục làm việc
 WORKDIR /app
 
-# Tạo package.json đơn giản
-RUN echo '{"dependencies":{"express":"^4.18.2","redis":"^3.1.2"}}' > package.json
-
-# Cài đặt dependencies
-RUN npm install --production
+# Cài đặt express và redis trực tiếp từ npm
+RUN npm init -y && \
+    npm cache clean --force && \
+    npm install express@4.17.1 redis@3.1.2 --no-package-lock --no-save
 
 # Copy các file cần thiết
 COPY files/ /app/files/

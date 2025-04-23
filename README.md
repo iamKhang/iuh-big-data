@@ -87,7 +87,13 @@ Tất cả các dịch vụ được kết nối thông qua mạng overlay tùy 
    ./setup-permissions.sh
    ```
 
-2. **Dọn dẹp Docker** (nếu cần):
+2. **Xử lý vấn đề tương thích ARM** (cho máy Mac M1/M2):
+   ```bash
+   # Nếu bạn đang sử dụng máy Mac với chip ARM (M1/M2), hãy chạy script này
+   sudo ./fix-arm-compatibility.sh
+   ```
+
+3. **Dọn dẹp Docker** (nếu cần):
    ```bash
    # Dọn dẹp hoàn toàn Docker (containers, services, images, networks, volumes)
    ./clean-docker.sh
@@ -127,9 +133,9 @@ Tất cả các dịch vụ được kết nối thông qua mạng overlay tùy 
    ./build-push-images.sh
    ```
 
-   > Nếu gặp lỗi với webui service, bạn có thể sử dụng một trong các script sau:
+   > Nếu gặp lỗi với webui service, đặc biệt là trên máy Mac với chip ARM (M1/M2), bạn có thể sử dụng một trong các script sau:
    > ```bash
-   > # Script sửa lỗi webui (khởi động lại registry và xóa cache)
+   > # Script sửa lỗi webui cho máy ARM (khởi động lại registry, xóa cache và build với các tùy chọn đặc biệt)
    > ./fix-webui.sh
    >
    > # Hoặc chỉ rebuild và redeploy webui service
@@ -618,12 +624,20 @@ Khi triển khai ứng dụng trên Docker Swarm với nhiều node, việc cấ
 
 ### Common Issues | Các vấn đề thường gặp
 
-1. **Lỗi `Error: Cannot find module 'node:events'` trong webui service**:
+1. **Vấn đề tương thích với chip ARM (M1/M2)**:
+   - **Triệu chứng**: Gặp nhiều lỗi khác nhau khi build và chạy trên máy Mac với chip ARM
+   - **Nguyên nhân**: Các image Docker và package có thể không hoàn toàn tương thích với kiến trúc ARM
+   - **Giải pháp**:
+     - Chạy script `sudo ./fix-arm-compatibility.sh` để cấu hình Docker cho ARM
+     - Sử dụng script `./fix-webui.sh` để build webui image với các tùy chọn đặc biệt cho ARM
+     - Thêm flag `--platform linux/arm64` khi build các image
+
+2. **Lỗi `Error: Cannot find module 'node:events'` trong webui service**:
    - **Triệu chứng**: Service webui không khởi động được với lỗi `Error: Cannot find module 'node:events'`
    - **Nguyên nhân**: Phiên bản Node.js cũ (v4) không hỗ trợ cú pháp `node:` prefix để import các module core
    - **Giải pháp**:
-     - Đã cập nhật Dockerfile của webui để sử dụng Node.js v16-alpine
-     - Nếu vẫn gặp lỗi, hãy chạy script `./rebuild-webui.sh` để rebuild và redeploy webui service
+     - Đã cập nhật Dockerfile của webui để sử dụng Node.js v14-alpine
+     - Nếu vẫn gặp lỗi, hãy chạy script `./fix-webui.sh` để rebuild và redeploy webui service
      - Kiểm tra logs: `docker service logs dockercoins_webui`
 
 2. **Lỗi `http: server gave HTTP response to HTTPS client` khi push image**:
@@ -636,9 +650,10 @@ Khi triển khai ứng dụng trên Docker Swarm với nhiều node, việc cấ
 
 3. **Lỗi `npm error Tracker "idealTree" already exists` khi build webui**:
    - **Triệu chứng**: Không thể build image webui với lỗi `npm error Tracker "idealTree" already exists`
+   - **Nguyên nhân**: Lỗi này thường xảy ra trên máy Mac với chip ARM (M1/M2) do vấn đề tương thích
    - **Giải pháp**:
      - Đã cập nhật Dockerfile để sử dụng cách tiếp cận khác: tạo package.json trước và cài đặt dependencies
-     - Sử dụng script `./fix-webui.sh` để khởi động lại registry, xóa cache và build lại image webui
+     - Sử dụng script `./fix-webui.sh` để khởi động lại registry, xóa cache và build lại image webui với các tùy chọn đặc biệt cho ARM
      - Nếu vẫn gặp lỗi, hãy thử dọn dẹp Docker với `./clean-docker.sh` và thử lại
 
 4. **Registry Access Issues | Vấn đề truy cập Registry**:
