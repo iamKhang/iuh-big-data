@@ -179,13 +179,13 @@ services:
       - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
     networks:
       - hoangkhang-net
-    # Sử dụng mode host để tránh cần mạng ingress
+    # Sử dụng port khác để tránh xung đột
     ports:
       - target: 5000
-        published: 5000
+        published: 5001
         mode: host
       - target: 5044
-        published: 5044
+        published: 5045
         mode: host
     environment:
       - "LS_JAVA_OPTS=-Xmx512m -Xms512m"
