@@ -1,0 +1,231 @@
+version: '3.8'
+
+services:
+  # Dockercoins services
+  rng:
+    build: rng
+    image: 127.0.0.1:5000/rng
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - hoangkhang-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  hasher:
+    build: hasher
+    image: 127.0.0.1:5000/hasher
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - hoangkhang-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  webui:
+    build: webui
+    image: 127.0.0.1:5000/webui
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - "./webui/files/:/files/"
+    networks:
+      - hoangkhang-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:alpine
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - hoangkhang-net
+
+  worker:
+    build: worker
+    image: 127.0.0.1:5000/worker
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - hoangkhang-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ELK Stack
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.14.0
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - ./elk/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 1G
+    networks:
+      - hoangkhang-net
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.14.0
+    volumes:
+      - ./elk/config/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    environment:
+      - "LS_JAVA_OPTS=-Xms256m -Xmx256m"
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 512M
+    depends_on:
+      - elasticsearch
+    networks:
+      - hoangkhang-net
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.14.0
+    volumes:
+      - ./elk/config/kibana.yml:/usr/share/kibana/config/kibana.yml
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 512M
+    depends_on:
+      - elasticsearch
+    networks:
+      - hoangkhang-net
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:7.14.0
+    volumes:
+      - ./elk/config/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    user: root
+    deploy:
+      mode: global
+    networks:
+      - hoangkhang-net
+
+  # Monitoring Stack
+  prometheus:
+    image: prom/prometheus:v2.30.0
+    volumes:
+      - ./monitoring/config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - hoangkhang-net
+
+  node-exporter:
+    image: prom/node-exporter:v1.2.2
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+    deploy:
+      mode: global
+    networks:
+      - hoangkhang-net
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.39.3
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    deploy:
+      mode: global
+    networks:
+      - hoangkhang-net
+
+  grafana:
+    image: grafana/grafana:8.1.2
+    volumes:
+      - ./monitoring/config/grafana.ini:/etc/grafana/grafana.ini
+      - grafana-data:/var/lib/grafana
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - hoangkhang-net
+
+  influxdb:
+    image: influxdb:1.8
+    volumes:
+      - ./monitoring/config/influxdb.conf:/etc/influxdb/influxdb.conf
+      - influxdb-data:/var/lib/influxdb
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - hoangkhang-net
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./nginx/config/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+    networks:
+      - hoangkhang-net
+
+networks:
+  hoangkhang-net:
+    external: true
+
+volumes:
+  elasticsearch-data:
+  prometheus-data:
+  grafana-data:
+  influxdb-data:
