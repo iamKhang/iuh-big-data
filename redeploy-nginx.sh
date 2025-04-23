@@ -29,6 +29,11 @@ echo "Kiểm tra trạng thái service Nginx..."
 sleep 5
 docker service ls | grep nginx
 
+# Kiểm tra logs của Nginx
+echo "Kiểm tra logs của Nginx..."
+sleep 5
+docker service logs dockercoins_nginx --tail 10
+
 # Lấy địa chỉ IP của máy
 IP_ADDR=$(hostname -I | awk '{print $1}')
 

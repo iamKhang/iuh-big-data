@@ -50,10 +50,22 @@ fi
 echo "===== Triển khai Docker Stack ====="
 ./deploy-stack.sh
 
+# Đợi 30 giây để các dịch vụ khởi động
+echo "Chờ các dịch vụ khởi động (30 giây)..."
+sleep 30
+
+# Triển khai lại stack để đảm bảo tất cả các dịch vụ được tạo
+echo "Triển khai lại stack để đảm bảo tất cả các dịch vụ được tạo..."
+docker stack deploy -c docker-stack.yml dockercoins
+
 # Kiểm tra trạng thái các service
 echo "===== Kiểm tra trạng thái các service ====="
 sleep 10
 docker stack services dockercoins
+
+# Đợi thêm 10 giây để các dịch vụ khởi động hoàn toàn
+echo "Chờ thêm 10 giây để các dịch vụ khởi động hoàn toàn..."
+sleep 10
 
 # Triển khai lại Nginx để đảm bảo hoạt động
 echo "===== Triển khai lại Nginx ====="

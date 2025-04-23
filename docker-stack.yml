@@ -129,7 +129,7 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel
-      - GF_SERVER_ROOT_URL=http://localhost/grafana
+      - GF_SERVER_ROOT_URL=http://192.168.19.10/grafana
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
       - GF_DASHBOARDS_MIN_REFRESH_INTERVAL=5s
       - GF_AUTH_ANONYMOUS_ENABLED=true
@@ -358,7 +358,9 @@ services:
       - elasticsearch.ssl.verificationMode=none
       - server.name=kibana
       - server.host=0.0.0.0
-      - server.publicBaseUrl=http://localhost/kibana
+      - server.basePath=/kibana
+      - server.rewriteBasePath=true
+      - server.publicBaseUrl=http://192.168.19.10/kibana
       - monitoring.ui.container.elasticsearch.enabled=true
     networks:
       - hoangkhang-net
