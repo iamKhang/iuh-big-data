@@ -8,8 +8,17 @@ echo "===== THIẾT LẬP HỆ THỐNG DOCKER SWARM ====="
 echo "Cấp quyền thực thi cho tất cả các script..."
 chmod +x *.sh
 
+# Dọn dẹp Docker nếu cần
+echo "Bạn có muốn dọn dẹp Docker trước khi bắt đầu? (y/n)"
+read clean_docker
+if [[ "$clean_docker" == "y" || "$clean_docker" == "Y" ]]; then
+  echo "===== Dọn dẹp Docker ====="
+  ./clean-docker.sh
+fi
+
 # Thiết lập registry
 echo "===== Thiết lập Docker Registry ====="
+sudo ./setup-registry.sh
 ./start-registry.sh
 
 # Thiết lập mạng
@@ -46,15 +55,22 @@ echo "===== Kiểm tra trạng thái các service ====="
 sleep 10
 docker stack services dockercoins
 
+# Triển khai lại Nginx để đảm bảo hoạt động
+echo "===== Triển khai lại Nginx ====="
+./redeploy-nginx.sh
+
+# Lấy địa chỉ IP của máy
+IP_ADDR=$(hostname -I | awk '{print $1}')
+
 echo "===== THIẾT LẬP HOÀN TẤT ====="
 echo "Bạn có thể truy cập các dịch vụ qua các URL sau:"
-echo "- Dashboard: http://localhost/"
-echo "- DockerCoins WebUI: http://localhost/webui/"
-echo "- Prometheus: http://localhost/prometheus/"
-echo "- Grafana: http://localhost/grafana/ (admin/admin)"
-echo "- Kibana: http://localhost/kibana/"
-echo "- Elasticsearch: http://localhost/elasticsearch/"
-echo "- InfluxDB: http://localhost/influxdb/ (admin/adminpassword)"
+echo "- Dashboard: http://$IP_ADDR/"
+echo "- DockerCoins WebUI: http://$IP_ADDR/webui/"
+echo "- Prometheus: http://$IP_ADDR/prometheus/"
+echo "- Grafana: http://$IP_ADDR/grafana/ (admin/admin)"
+echo "- Kibana: http://$IP_ADDR/kibana/"
+echo "- Elasticsearch: http://$IP_ADDR/elasticsearch/"
+echo "- InfluxDB: http://$IP_ADDR/influxdb/ (admin/adminpassword)"
 
 echo "Để kiểm tra logs của các service:"
 echo "docker service logs dockercoins_webui"

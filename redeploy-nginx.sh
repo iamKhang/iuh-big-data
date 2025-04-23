@@ -1,8 +1,15 @@
 #!/bin/bash
 
-# Script để triển khai lại service Nginx
+# Script để triển khai lại service Nginx với cấu hình mới
 
-echo "===== Triển khai lại service Nginx ====="
+echo "===== Triển khai lại service Nginx với cấu hình mới ====="
+
+# Sử dụng cấu hình mới nếu có
+if [ -f "nginx.conf.new" ]; then
+  echo "Sử dụng cấu hình Nginx mới..."
+  cp nginx.conf.new nginx.conf
+  echo "Cấu hình Nginx đã được cập nhật."
+fi
 
 # Dừng service Nginx hiện tại
 echo "Dừng service Nginx hiện tại..."
@@ -24,6 +31,15 @@ docker service create \
   --dns 127.0.0.11 \
   nginx:latest
 
+# Kiểm tra trạng thái service
+echo "Kiểm tra trạng thái service Nginx..."
+sleep 5
+docker service ls | grep nginx
+
+# Lấy địa chỉ IP của máy
+IP_ADDR=$(hostname -I | awk '{print $1}')
+
 echo "===== Hoàn tất! ====="
+echo "Bạn có thể truy cập Nginx qua: http://$IP_ADDR/"
 echo "Kiểm tra logs của service Nginx:"
 echo "docker service logs dockercoins_nginx --follow"
