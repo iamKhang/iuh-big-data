@@ -620,6 +620,68 @@ Khi triển khai ứng dụng trên Docker Swarm với nhiều node, việc cấ
   - SSL termination (if configured) | Kết thúc SSL (nếu được cấu hình)
 - **Configuration | Cấu hình**: See `nginx.conf` | Xem file `nginx.conf`
 
+## DNS and Nginx Configuration | Cấu hình DNS và Nginx
+
+### DNS Resolution in Docker Swarm | Phân giải DNS trong Docker Swarm
+
+Docker Swarm sử dụng DNS nội bộ để phân giải tên service thành địa chỉ IP của các container. Tuy nhiên, đôi khi DNS resolution có thể không hoạt động đúng cách, dẫn đến việc Nginx không thể kết nối đến các service.
+
+#### Cấu hình DNS trong Docker
+
+File `update-dns.sh` được sử dụng để cập nhật cấu hình DNS trong Docker:
+
+```bash
+# Chạy script để cập nhật cấu hình DNS
+sudo ./update-dns.sh
+```
+
+Script này sẽ cập nhật file `/etc/docker/daemon.json` với các cấu hình DNS sau:
+
+```json
+{
+  "dns": ["8.8.8.8", "8.8.4.4"],
+  "dns-search": ["hoangkhang-net"],
+  "dns-opts": ["ndots:1", "timeout:2", "attempts:3"],
+  "insecure-registries": ["192.168.19.10:5000"]
+}
+```
+
+### Nginx Configuration | Cấu hình Nginx
+
+Nginx được sử dụng làm reverse proxy để cung cấp điểm truy cập thống nhất đến tất cả các dịch vụ. Để đảm bảo Nginx có thể phân giải đúng tên service trong Docker Swarm, cần cấu hình resolver và sử dụng biến trong proxy_pass.
+
+#### Cấu hình resolver trong Nginx
+
+```nginx
+http {
+    # Cấu hình resolver để sử dụng DNS của Docker
+    resolver 127.0.0.11 valid=30s;
+    resolver_timeout 10s;
+
+    # Cấu hình proxy buffer
+    proxy_buffer_size 128k;
+    proxy_buffers 4 256k;
+    proxy_busy_buffers_size 256k;
+    proxy_connect_timeout 60s;
+    proxy_read_timeout 60s;
+    proxy_send_timeout 60s;
+}
+```
+
+#### Sử dụng biến trong proxy_pass
+
+```nginx
+location /elasticsearch/ {
+    set $upstream_elasticsearch elasticsearch;
+    proxy_pass http://$upstream_elasticsearch:9200/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_read_timeout 90s;
+}
+```
+
+Việc sử dụng biến trong proxy_pass buộc Nginx phải resolve tên service mỗi khi có request, tránh việc cache DNS không chính xác.
+
 ## Troubleshooting | Xử lý sự cố
 
 ### Common Issues | Các vấn đề thường gặp
@@ -669,18 +731,37 @@ Khi triển khai ứng dụng trên Docker Swarm với nhiều node, việc cấ
    - Kiểm tra tài nguyên có sẵn: `docker node ls`
    - Kiểm tra xem image có tồn tại trong registry không: `curl -s http://<manager-ip>:5000/v2/dockercoins_<service>/tags/list`
 
-6. **Network connectivity issues | Vấn đề kết nối mạng**:
+6. **Lỗi DNS và Nginx proxy trong Docker Swarm**:
+   - **Triệu chứng**: Nginx không thể kết nối đến các service, lỗi timeout hoặc lỗi "upstream timed out", Nginx resolve tên service thành IP bên ngoài
+   - **Nguyên nhân**: DNS resolution trong mạng Docker Swarm không hoạt động đúng cách
+   - **Giải pháp**:
+     - Cập nhật file `nginx.conf` để thêm resolver và sử dụng biến trong proxy_pass
+     - Chạy script `sudo ./update-dns.sh` để cập nhật cấu hình DNS trong Docker
+     - Triển khai lại stack: `./deploy-stack.sh`
+     - Kiểm tra logs của Nginx: `docker service logs dockercoins_nginx`
+
+7. **Network connectivity issues | Vấn đề kết nối mạng**:
    - Kiểm tra mạng: `docker network inspect hoangkhang-net`
    - Kiểm tra khả năng phát hiện dịch vụ: `docker exec -it <container_id> ping <service_name>`
    - Kiểm tra kết nối giữa các node: `ping <other-node-ip>`
+   - Kiểm tra DNS resolution: `docker run --rm --network hoangkhang-net alpine nslookup elasticsearch`
 
-7. **Elasticsearch not storing logs | Elasticsearch không lưu trữ logs**:
+8. **Elasticsearch not storing logs | Elasticsearch không lưu trữ logs**:
    - Kiểm tra cấu hình Logstash
    - Kiểm tra trạng thái Elasticsearch: `curl -X GET "http://<manager-ip>/elasticsearch/_cluster/health?pretty"`
 
-8. **Prometheus not collecting metrics | Prometheus không thu thập metrics**:
+9. **Prometheus not collecting metrics | Prometheus không thu thập metrics**:
    - Kiểm tra các mục tiêu: `curl -s "http://<manager-ip>/prometheus/api/v1/targets" | jq .`
    - Kiểm tra cấu hình thu thập trong `prometheus.yml`
+
+10. **Lỗi port đã được sử dụng (port is already allocated)**:
+    - **Triệu chứng**: Service không khởi động được với lỗi `Bind for 0.0.0.0:5000 failed: port is already allocated`
+    - **Nguyên nhân**: Port đã được sử dụng bởi một service hoặc process khác
+    - **Giải pháp**:
+      - Thay đổi port trong file cấu hình (ví dụ: thay đổi port 5000 thành 5001 trong `docker-stack.yml`)
+      - Cập nhật cấu hình trong file `logstash.conf` để lắng nghe trên cả port cũ và port mới
+      - Kiểm tra process nào đang sử dụng port: `sudo lsof -i :5000` hoặc `sudo netstat -tulpn | grep 5000`
+      - Dừng process đang sử dụng port: `sudo fuser -k 5000/tcp`
 
 ## License | Giấy phép
 
