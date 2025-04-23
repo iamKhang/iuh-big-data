@@ -14,6 +14,7 @@ SCRIPTS=(
   "setup-registry.sh"
   "start-registry.sh"
   "setup-permissions.sh"
+  "fix-webui.sh"
 )
 
 # Cấp quyền thực thi cho từng script

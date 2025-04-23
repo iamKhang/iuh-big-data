@@ -127,8 +127,12 @@ Tất cả các dịch vụ được kết nối thông qua mạng overlay tùy 
    ./build-push-images.sh
    ```
 
-   > Nếu gặp lỗi với webui service, bạn có thể rebuild riêng service này:
+   > Nếu gặp lỗi với webui service, bạn có thể sử dụng một trong các script sau:
    > ```bash
+   > # Script sửa lỗi webui (khởi động lại registry và xóa cache)
+   > ./fix-webui.sh
+   >
+   > # Hoặc chỉ rebuild và redeploy webui service
    > ./rebuild-webui.sh
    > ```
 
@@ -633,7 +637,8 @@ Khi triển khai ứng dụng trên Docker Swarm với nhiều node, việc cấ
 3. **Lỗi `npm error Tracker "idealTree" already exists` khi build webui**:
    - **Triệu chứng**: Không thể build image webui với lỗi `npm error Tracker "idealTree" already exists`
    - **Giải pháp**:
-     - Đã cập nhật Dockerfile để cài đặt các dependencies trong một lệnh với các tham số `--no-fund --no-audit`
+     - Đã cập nhật Dockerfile để sử dụng cách tiếp cận khác: tạo package.json trước và cài đặt dependencies
+     - Sử dụng script `./fix-webui.sh` để khởi động lại registry, xóa cache và build lại image webui
      - Nếu vẫn gặp lỗi, hãy thử dọn dẹp Docker với `./clean-docker.sh` và thử lại
 
 4. **Registry Access Issues | Vấn đề truy cập Registry**:
