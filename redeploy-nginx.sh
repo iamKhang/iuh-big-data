@@ -12,6 +12,10 @@ docker service rm dockercoins_nginx
 echo "Đợi service dừng hoàn toàn..."
 sleep 5
 
+# Kiểm tra cấu hình Nginx
+echo "Kiểm tra cấu hình Nginx..."
+docker run --rm -v $(pwd)/nginx.conf:/etc/nginx/nginx.conf:ro nginx:latest nginx -t
+
 # Triển khai lại service Nginx
 echo "Triển khai lại service Nginx..."
 docker service create \
