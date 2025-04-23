@@ -1,15 +1,8 @@
 #!/bin/bash
 
-# Script để triển khai lại service Nginx với cấu hình mới
+# Script để triển khai lại service Nginx
 
-echo "===== Triển khai lại service Nginx với cấu hình mới ====="
-
-# Sử dụng cấu hình mới nếu có
-if [ -f "nginx.conf.new" ]; then
-  echo "Sử dụng cấu hình Nginx mới..."
-  cp nginx.conf.new nginx.conf
-  echo "Cấu hình Nginx đã được cập nhật."
-fi
+echo "===== Triển khai lại service Nginx ====="
 
 # Dừng service Nginx hiện tại
 echo "Dừng service Nginx hiện tại..."

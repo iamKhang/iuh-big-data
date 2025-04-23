@@ -40,6 +40,10 @@ check_service "dockercoins_kibana" "5601"
 check_service "dockercoins_elasticsearch" "9200"
 check_service "dockercoins_influxdb" "8086"
 
+# Kiểm tra các biến trong nginx.conf
+echo -e "\n===== Kiểm tra các biến trong nginx.conf ====="
+docker exec $NGINX_CONTAINER grep -A 2 "set \$upstream" /etc/nginx/nginx.conf
+
 # Kiểm tra DNS resolution
 echo -e "\n===== Kiểm tra DNS resolution ====="
 docker exec $NGINX_CONTAINER cat /etc/resolv.conf
