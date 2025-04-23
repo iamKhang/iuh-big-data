@@ -15,9 +15,9 @@ if ! docker ps | grep -q registry; then
     docker run -d -p 5000:5000 --restart=always --name registry registry:2
 fi
 
-# Lấy địa chỉ IP của máy hiện tại
-MANAGER_IP=$(hostname -I | awk '{print $1}')
-echo "Sử dụng địa chỉ IP của manager node: $MANAGER_IP"
+# Sử dụng địa chỉ IP cố định của manager node
+MANAGER_IP="192.168.19.10"
+echo "Sử dụng địa chỉ IP cố định của manager node: $MANAGER_IP"
 
 # Build và push các image
 echo "Đang build và push các image..."
@@ -42,9 +42,9 @@ echo "Building worker image..."
 docker build -t $MANAGER_IP:5000/worker ./worker
 docker push $MANAGER_IP:5000/worker
 
-# Cập nhật file docker-stack.yml để sử dụng địa chỉ IP của manager node
-echo "Cập nhật file docker-stack.yml để sử dụng địa chỉ IP của manager node..."
-sed -i "s/127.0.0.1:5000/$MANAGER_IP:5000/g" docker-stack.yml
+# Đảm bảo file docker-stack.yml sử dụng địa chỉ IP cố định
+echo "Kiểm tra file docker-stack.yml để đảm bảo sử dụng địa chỉ IP cố định..."
+# Đã sử dụng địa chỉ IP cố định trong file docker-stack.yml
 
 # Triển khai stack
 echo "Đang triển khai stack..."

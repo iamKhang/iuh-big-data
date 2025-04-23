@@ -34,8 +34,8 @@ echo "Kiểm tra và dừng registry nếu đang chạy..."
 docker stop registry 2>/dev/null || true
 docker rm registry 2>/dev/null || true
 
-# Khởi động registry local
-echo "Đang khởi động registry local..."
+# Khởi động registry local với địa chỉ IP cố định
+echo "Đang khởi động registry local tại 192.168.19.10:5000..."
 docker run -d -p 5000:5000 --restart=always --name registry registry:2
 
 # Đảm bảo registry đã khởi động
@@ -49,5 +49,5 @@ fi
 # Hiển thị thông báo hoàn thành
 echo "===== THIẾT LẬP MÔI TRƯỜNG HOÀN TẤT ====="
 echo "Mạng hoangkhang-net đã được tạo"
-echo "Registry local đã được khởi động tại 127.0.0.1:5000"
+echo "Registry local đã được khởi động tại 192.168.19.10:5000"
 echo "Bạn có thể tiếp tục với việc triển khai ứng dụng"

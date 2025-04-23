@@ -4,7 +4,7 @@ services:
   # Dockercoins services
   rng:
     build: rng
-    image: 127.0.0.1:5000/rng
+    image: 192.168.19.10:5000/rng
     deploy:
       replicas: 1
       restart_policy:
@@ -19,7 +19,7 @@ services:
 
   hasher:
     build: hasher
-    image: 127.0.0.1:5000/hasher
+    image: 192.168.19.10:5000/hasher
     deploy:
       replicas: 1
       restart_policy:
@@ -34,7 +34,7 @@ services:
 
   webui:
     build: webui
-    image: 127.0.0.1:5000/webui
+    image: 192.168.19.10:5000/webui
     deploy:
       replicas: 1
       restart_policy:
@@ -60,7 +60,7 @@ services:
 
   worker:
     build: worker
-    image: 127.0.0.1:5000/worker
+    image: 192.168.19.10:5000/worker
     deploy:
       replicas: 1
       restart_policy:
@@ -78,9 +78,12 @@ services:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.14.0
     environment:
       - discovery.type=single-node
-      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+      - "ES_JAVA_OPTS=-Xms128m -Xmx128m"
       - "bootstrap.memory_lock=true"
       - "xpack.security.enabled=false"
+      - "cluster.routing.allocation.disk.threshold_enabled=false"
+      - "cluster.routing.allocation.disk.watermark.low=500mb"
+      - "cluster.routing.allocation.disk.watermark.high=300mb"
     volumes:
       - ./elk/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
       - elasticsearch-data:/usr/share/elasticsearch/data
@@ -88,16 +91,22 @@ services:
       replicas: 1
       resources:
         limits:
-          memory: 512M
+          memory: 384M
       restart_policy:
         condition: on-failure
-        delay: 5s
-        max_attempts: 3
+        delay: 10s
+        max_attempts: 5
         window: 120s
+      placement:
+        constraints:
+          - node.role == manager
     ulimits:
       memlock:
         soft: -1
         hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
     networks:
       - hoangkhang-net
 
@@ -106,17 +115,22 @@ services:
     volumes:
       - ./elk/config/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
     environment:
-      - "LS_JAVA_OPTS=-Xms128m -Xmx256m"
+      - "LS_JAVA_OPTS=-Xms64m -Xmx128m"
+      - "config.reload.automatic=true"
+      - "http.host=0.0.0.0"
     deploy:
       replicas: 1
       resources:
         limits:
-          memory: 384M
+          memory: 256M
       restart_policy:
         condition: on-failure
-        delay: 5s
-        max_attempts: 3
+        delay: 10s
+        max_attempts: 5
         window: 120s
+      placement:
+        constraints:
+          - node.role == manager
     depends_on:
       - elasticsearch
     networks:
@@ -241,11 +255,23 @@ services:
     volumes:
       - ./monitoring/config/influxdb.conf:/etc/influxdb/influxdb.conf
       - influxdb-data:/var/lib/influxdb
+    environment:
+      - INFLUXDB_DB=prometheus
+      - INFLUXDB_ADMIN_USER=admin
+      - INFLUXDB_ADMIN_PASSWORD=admin
     deploy:
       replicas: 1
       resources:
         limits:
-          memory: 512M
+          memory: 384M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      placement:
+        constraints:
+          - node.role == manager
     networks:
       - hoangkhang-net
 

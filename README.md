@@ -291,24 +291,44 @@ docker stack deploy -c docker-stack.yml dockercoins
 
 Nếu bạn gặp vấn đề "unsupported platform" hoặc các lỗi tương tự, hãy thử các giải pháp sau:
 
-1. **Đảm bảo sử dụng các image tương thích với ARM**:
+1. **Đảm bảo sử dụng địa chỉ IP cố định cho registry**:
    ```bash
-   # Kiểm tra kiến trúc của image
-   docker inspect --format '{{.Architecture}}' <image_name>
+   # Sử dụng địa chỉ IP cố định của manager node (192.168.19.10) thay vì 127.0.0.1
+   # Đã được cập nhật trong các file cấu hình
    ```
 
 2. **Giảm bộ nhớ cấp cho các dịch vụ**:
    ```bash
-   # Chỉnh sửa giới hạn bộ nhớ trong docker-stack.yml
-   # Ví dụ: giảm từ 1G xuống 512M
+   # Đã giảm bộ nhớ cho Elasticsearch từ 512M xuống 384M
+   # Đã giảm bộ nhớ cho Logstash từ 384M xuống 256M
+   # Đã giảm JVM heap cho Elasticsearch và Logstash
    ```
 
-3. **Tắt các dịch vụ không cần thiết**:
+3. **Đảm bảo các dịch vụ chỉ chạy trên manager node**:
    ```bash
-   # Bỏ comment các dịch vụ không tương thích trong docker-stack.yml
+   # Đã thêm ràng buộc placement cho các dịch vụ quan trọng
+   placement:
+     constraints:
+       - node.role == manager
    ```
 
-4. **Sử dụng các phiên bản mới hơn của các image**:
+4. **Kiểm tra logs của dịch vụ đang gặp vấn đề**:
    ```bash
-   # Cập nhật phiên bản image trong docker-stack.yml
+   # Kiểm tra logs của Logstash
+   docker service logs dockercoins_logstash
+
+   # Kiểm tra logs của Elasticsearch
+   docker service logs dockercoins_elasticsearch
+
+   # Kiểm tra logs của InfluxDB
+   docker service logs dockercoins_influxdb
+   ```
+
+5. **Khởi động lại dịch vụ cụ thể**:
+   ```bash
+   # Khởi động lại Logstash
+   docker service update --force dockercoins_logstash
+
+   # Khởi động lại Elasticsearch
+   docker service update --force dockercoins_elasticsearch
    ```
