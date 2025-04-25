@@ -1,8 +1,9 @@
 version: "3"
 
 services:
+  # Dockercoins services
   rng:
-    build: rng
+    image: iamhoangkhang/rng:latest
     ports:
     - "8001:80"
     container_name: rng
@@ -10,7 +11,7 @@ services:
       - mynet
 
   hasher:
-    build: hasher
+    image: iamhoangkhang/hasher:latest
     ports:
     - "8002:80"
     container_name: hasher
@@ -18,7 +19,7 @@ services:
       - mynet
 
   webui:
-    build: webui
+    image: iamhoangkhang/webui:latest
     ports:
     - "8000:80"
     volumes:
@@ -28,13 +29,72 @@ services:
       - mynet
 
   redis:
-    image: redis
+    image: redis:alpine
+    ports:
+      - "6379:6379"
     container_name: redis
     networks:
       - mynet
 
   worker:
-    build: worker
+    image: iamhoangkhang/worker:latest
+    container_name: worker
+    networks:
+      - mynet
+
+  # Monitoring Stack
+  prometheus:
+    image: prom/prometheus:v2.30.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    container_name: prometheus
+    networks:
+      - mynet
+
+  node-exporter:
+    image: prom/node-exporter:v1.2.2
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+    container_name: node-exporter
+    networks:
+      - mynet
+
+  grafana:
+    image: grafana/grafana:9.5.2
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/config/grafana.ini:/etc/grafana/grafana.ini
+      - grafana-data:/var/lib/grafana
+    container_name: grafana
+    networks:
+      - mynet
+
+  influxdb:
+    image: influxdb:2.7
+    ports:
+      - "8086:8086"
+    volumes:
+      - ./monitoring/config/influxdb.conf:/etc/influxdb/influxdb.conf
+      - influxdb-data:/var/lib/influxdb
+    environment:
+      - INFLUXDB_DB=prometheus
+      - INFLUXDB_ADMIN_USER=admin
+      - INFLUXDB_ADMIN_PASSWORD=admin
+    container_name: influxdb
     networks:
       - mynet
 
@@ -43,3 +103,7 @@ networks:
     name: mrnamnet
     driver: bridge
 
+volumes:
+  prometheus-data:
+  grafana-data:
+  influxdb-data:
